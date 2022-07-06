@@ -1,4 +1,4 @@
-import type { GatsbyConfig } from 'gatsby';
+import type { GatsbyConfig } from "gatsby";
 
 const config: GatsbyConfig = {
   // Since `gatsby-plugin-typescript` is automatically included in Gatsby you
