@@ -5,10 +5,10 @@ import { Player as SoundfontPlayer } from "soundfont-player";
 
 import Result from "src/components/result";
 import useMidiFiles from "src/hooks/use-midi-files";
-import { SearchResults } from "src/hooks/use-search";
+import { SearchResponse } from "src/hooks/use-search";
 
 interface ResultsProps {
-  searchResults: SearchResults;
+  searchResults: SearchResponse;
   instrument: SoundfontPlayer;
   audioContext: AudioContext;
 }
@@ -31,8 +31,9 @@ function handleStop() {
 
 export default function Results(props: ResultsProps) {
   const [activeResult, setActiveResult] = useState(-1);
+  const [activeOffset, setActiveOffset] = useState(0);
   const fileIdToData = useMidiFiles(
-    props.searchResults.map((sr) => sr.file_id),
+    props.searchResults.results.map((sr) => sr.file_id),
   );
 
   useEffect(() => {
@@ -44,7 +45,6 @@ export default function Results(props: ResultsProps) {
         );
       } else if (event.name === "Note off") {
         if (PLAYING[event.noteName]) {
-          console.log("wa");
           PLAYING[event.noteName].stop();
           PLAYING[event.noteName] = null;
         }
@@ -58,16 +58,17 @@ export default function Results(props: ResultsProps) {
 
   function handlePlay(prev: number, next: number) {
     handleStop();
-    const sr = props.searchResults[next];
-    fileIdToData[sr.file_id].then((data) => {
+    const nextSr = props.searchResults.results[next];
+    fileIdToData[nextSr.file_id].then((data) => {
       Player.loadArrayBuffer(data);
-      Player.skipToSeconds(sr.offset);
+      Player.skipToSeconds(nextSr.offsets[activeOffset]);
       Player.play();
     });
   }
 
   function handleSelectNextResult() {
-    if (activeResult + 1 < props.searchResults.length) {
+    if (activeResult + 1 < props.searchResults.results.length) {
+      setActiveOffset(0);
       setActiveResult((curr) => curr + 1);
       handlePlay(activeResult, activeResult + 1);
     }
@@ -75,6 +76,7 @@ export default function Results(props: ResultsProps) {
 
   function handleSelectPreviousResult() {
     if (activeResult > 0) {
+      setActiveOffset(0);
       setActiveResult((curr) => curr - 1);
       handlePlay(activeResult, activeResult - 1);
     }
@@ -82,17 +84,46 @@ export default function Results(props: ResultsProps) {
 
   useHotkeys("j", handleSelectNextResult, [activeResult]);
   useHotkeys("k", handleSelectPreviousResult, [activeResult]);
+  useHotkeys("h", handleSelectPreviousOffset, [activeOffset, activeResult]);
+  useHotkeys("l", handleSelectNextOffset, [activeOffset, activeResult]);
   useHotkeys("Esc", handleStop, [activeResult]);
 
+  function handleSelectNextOffset() {
+    if (activeResult >= 0) {
+      const result = props.searchResults.results[activeResult];
+      if (activeOffset < result.offsets.length - 1) {
+        setActiveOffset((curr) => curr + 1);
+        handlePlay(activeResult, activeResult); // this is dumb
+      }
+    }
+  }
+
+  function handleSelectPreviousOffset() {
+    if (activeResult >= 0 && activeOffset > 0) {
+      setActiveOffset((curr) => curr - 1);
+      handlePlay(activeResult, activeResult); // this is dumb
+    }
+  }
+
   function renderResults() {
-    return props.searchResults?.map((result, i) => (
+    return props.searchResults.results.map((result, i) => (
       <Result
         key={`result-${i}`}
-        fileId={result.file_id}
+        result={result}
+        offsetIndex={activeOffset}
         active={activeResult === i}
       />
     ));
   }
 
-  return <div>{renderResults()}</div>;
+  const { num_matches, num_files } = props.searchResults;
+
+  return (
+    <div>
+      <p>
+        Found {num_matches} matches across {num_files} files.
+      </p>
+      {renderResults()}
+    </div>
+  );
 }
