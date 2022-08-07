@@ -1,17 +1,16 @@
 import debounce from "lodash.debounce";
 import { useState, useEffect, useMemo } from "react";
 import { SizeMe } from "react-sizeme";
-import { Player } from "soundfont-player";
 
 import "react-piano/dist/styles.css";
 
 import usePressedNotes from "src/hooks/use-pressed-notes";
+import AudioEngine from "src/audio-engine";
 
 const { ControlledPiano, MidiNumbers } = require("react-piano");
 
 interface PianoProps {
-  instrument: Player;
-  midiAccess: MIDIAccess;
+  audioEngine: AudioEngine;
   onSlowChange: (notes: number[]) => void;
 }
 
@@ -22,7 +21,7 @@ const noteRange = {
 };
 
 export default function Piano(props: PianoProps) {
-  const pressed = usePressedNotes(props.midiAccess, props.instrument);
+  const pressed = usePressedNotes(props.audioEngine);
   const [usingSlow, setUsingSlow] = useState(false);
   const [slowNotes, setSlowNotes] = useState<number[]>([]);
 
