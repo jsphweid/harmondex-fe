@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Player } from "soundfont-player";
+
+import AudioEngine from "src/audio-engine";
 
 // if we don't use a global variable to manage the truth,
 // notes will occasionally get stuck because of the unpredictable
@@ -10,21 +11,18 @@ let ON_NOTES: number[] = [];
 // TODO: this should just be global/application scoped
 const playing: { [key: number]: any | null } = {};
 
-export default function usePressedNotes(
-  midiAccess: MIDIAccess,
-  instrument: Player,
-) {
+export default function usePressedNotes(audioEngine: AudioEngine) {
   const [pressed, setPressed] = useState<number[]>([]);
   // TODO: fix any
 
   useEffect(() => {
-    midiAccess.inputs.forEach((input) => {
+    audioEngine.midiAccess.inputs.forEach((input) => {
       input.onmidimessage = (event: any) => {
         const type = event.data[0];
         const note = event.data[1];
         if (type === 144) {
           ON_NOTES.push(note);
-          playing[note] = instrument.play(note);
+          playing[note] = audioEngine.instrument.play(note);
         } else if (type === 128) {
           ON_NOTES = ON_NOTES.filter((n) => n !== note);
           if (playing[note]) {
@@ -41,7 +39,7 @@ export default function usePressedNotes(
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [midiAccess.inputs]);
+  }, [audioEngine.midiAccess.inputs]);
 
   return pressed;
 }

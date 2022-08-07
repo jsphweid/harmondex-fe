@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { Player } from "soundfont-player";
 
 import useSearch from "src/hooks/use-search";
 import Piano from "src/components/piano";
 import Results from "src/components/results";
+import AudioEngine from "src/audio-engine";
 
 interface MainProps {
-  audioContext: AudioContext;
-  midiAccess: MIDIAccess;
-  instrument: Player;
+  audioEngine: AudioEngine;
 }
 
 export default function Main(props: MainProps) {
@@ -23,21 +21,14 @@ export default function Main(props: MainProps) {
     <div>
       <Piano
         onSlowChange={handlePianoNotesChanged}
-        instrument={props.instrument}
-        midiAccess={props.midiAccess}
+        audioEngine={props.audioEngine}
       />
 
       <p>Pressed Notes: {lastPressed.join(" - ")}</p>
 
       {isLoading ? <p>Loading Results...</p> : null}
 
-      {data && (
-        <Results
-          instrument={props.instrument}
-          searchResults={data}
-          audioContext={props.audioContext}
-        />
-      )}
+      {data && <Results audioEngine={props.audioEngine} searchResults={data} />}
     </div>
   );
 }

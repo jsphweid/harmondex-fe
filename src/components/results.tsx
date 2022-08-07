@@ -1,32 +1,14 @@
 import { useState, useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import MidiPlayer from "midi-player-js";
-import { Player as SoundfontPlayer } from "soundfont-player";
 
 import Result from "src/components/result";
 import useMidiFiles from "src/hooks/use-midi-files";
 import { SearchResponse } from "src/hooks/use-search";
+import AudioEngine from "src/audio-engine";
 
 interface ResultsProps {
   searchResults: SearchResponse;
-  instrument: SoundfontPlayer;
-  audioContext: AudioContext;
-}
-
-const Player = new MidiPlayer.Player();
-
-// TODO: this should just be global/application scoped
-const PLAYING: { [key: number]: any | null } = {};
-
-function handleStop() {
-  Player.stop();
-  Object.keys(PLAYING).forEach((key: any) => {
-    if (PLAYING[key]) {
-      PLAYING[key].stop();
-      PLAYING[key] = null;
-    }
-  });
-  Player.resetTracks();
+  audioEngine: AudioEngine;
 }
 
 export default function Results(props: ResultsProps) {
@@ -37,32 +19,14 @@ export default function Results(props: ResultsProps) {
   );
 
   useEffect(() => {
-    Player.on("midiEvent", function (event: any) {
-      if (event.name === "Note on") {
-        PLAYING[event.noteName] = props.instrument.play(
-          event.noteName,
-          props.audioContext.currentTime,
-        );
-      } else if (event.name === "Note off") {
-        if (PLAYING[event.noteName]) {
-          PLAYING[event.noteName].stop();
-          PLAYING[event.noteName] = null;
-        }
-      }
-    });
-  }, [props.audioContext, props.instrument]);
-
-  useEffect(() => {
     setActiveResult(-1);
   }, [props.searchResults, setActiveResult]);
 
   function handlePlay(prev: number, next: number) {
-    handleStop();
+    props.audioEngine.stopPlaying();
     const nextSr = props.searchResults.results[next];
     fileIdToData[nextSr.file_id].then((data) => {
-      Player.loadArrayBuffer(data);
-      Player.skipToSeconds(nextSr.offsets[activeOffset]);
-      Player.play();
+      props.audioEngine.playMidiAt(data, nextSr.abs_tick_offsets[activeOffset]);
     });
   }
 
@@ -86,12 +50,12 @@ export default function Results(props: ResultsProps) {
   useHotkeys("k", handleSelectPreviousResult, [activeResult]);
   useHotkeys("h", handleSelectPreviousOffset, [activeOffset, activeResult]);
   useHotkeys("l", handleSelectNextOffset, [activeOffset, activeResult]);
-  useHotkeys("Esc", handleStop, [activeResult]);
+  useHotkeys("Esc", props.audioEngine.stopPlaying, [activeResult]);
 
   function handleSelectNextOffset() {
     if (activeResult >= 0) {
       const result = props.searchResults.results[activeResult];
-      if (activeOffset < result.offsets.length - 1) {
+      if (activeOffset < result.abs_tick_offsets.length - 1) {
         setActiveOffset((curr) => curr + 1);
         handlePlay(activeResult, activeResult); // this is dumb
       }
@@ -110,6 +74,7 @@ export default function Results(props: ResultsProps) {
       <Result
         key={`result-${i}`}
         result={result}
+        midiFilePromise={fileIdToData[result.file_id]}
         offsetIndex={activeOffset}
         active={activeResult === i}
       />

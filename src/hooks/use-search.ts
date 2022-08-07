@@ -10,7 +10,7 @@ export interface MidiMetadata {
 
 export interface SearchResultV2 {
   file_id: number;
-  offsets: number[];
+  abs_tick_offsets: number[];
   midi_metadata: MidiMetadata | null;
 }
 
