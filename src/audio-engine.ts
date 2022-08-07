@@ -88,9 +88,6 @@ export default class AudioEngine {
         this.playing[key] = null;
       }
     });
-
-    // NOTE: I think this is bad
-    // Player.resetTracks();
   };
 }
 
